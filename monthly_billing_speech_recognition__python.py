@@ -1,65 +1,61 @@
 import speech_recognition as sr
 import time
 
+
 languages = ["en-EN", "de-DE"]
+input_collection = list()
+
+rec = sr.Recognizer()
+mic = sr.Microphone()
 
 
-def recognize_speech_from_mic(recognizer, microphone):
-    """Transcribe speech from recorded from `microphone`.
+def capture_input(prompt="Next"):
+    with mic as source:
+        # rec.adjust_for_ambient_noise(source)
+        print(prompt)
+        audio = rec.listen(source)
+        time.sleep(3)
+    return audio
 
-    Returns a dictionary with three keys:
-    "success": a boolean indicating whether or not the API request was
-               successful
-    "error":   `None` if no error occured, otherwise a string containing
-               an error message if the API could not be reached or
-               speech was unrecognizable
-    "transcription": `None` if speech could not be transcribed,
-               otherwise a string containing the transcribed text
-    """
-    # check that recognizer and microphone arguments are appropriate type
-    if not isinstance(recognizer, sr.Recognizer):
-        raise TypeError("`recognizer` must be `Recognizer` instance")
 
-    if not isinstance(microphone, sr.Microphone):
-        raise TypeError("`microphone` must be `Microphone` instance")
+def get_command(prompt="next, finished or print"):
+    print("Enter command")
+    command = create_text_from_audio(capture_input(prompt))
+    return command.lower()
 
-    # adjust the recognizer sensitivity to ambient noise and record audio
-    # from the microphone
-    with microphone as source:
-        recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.listen(source)
 
-    # set up the response object
-    response = {
-        "success": True,
-        "error": None,
-        "transcription": None
-    }
-
-    # try recognizing the speech in the recording
-    # if a RequestError or UnknownValueError exception is caught,
-    #     update the response object accordingly
+def create_text_from_audio(audio):
     try:
-        response["transcription"] = recognizer.recognize_google(audio)
-    except sr.RequestError:
-        # API was unreachable or unresponsive
-        response["success"] = False
-        response["error"] = "API unavailable"
+        text = rec.recognize_google(audio)
+        print("Google Speech Recognition thinks you said " + text)
     except sr.UnknownValueError:
-        # speech was unintelligible
-        response["error"] = "Unable to recognize speech"
+        print("Google Speech Recognition could not understand audio")
+        text = "Unrecognized"
+    except sr.RequestError as e:
+        print("Could not request results from Google Speech Recognition service; {0}".format(e))
+        text = "Error"
+    return text
 
-    return response
+
+def create_entry():
+    entry = list()
+    prompts = ["Date", "Category", "Amount"]
+    print("Creating new entry: ")
+    for i in range(3):
+        time.sleep(3)
+        audio = capture_input(prompts[i])
+        text = create_text_from_audio(audio)
+        entry.append(text)
+    return entry
 
 
-if __name__ == "__main__":
-    r = sr.Recognizer()
-    mic = sr.Microphone()
-
-    instructions = "Say something to test speech recognition"
-    
-    print(instructions)
-    time.sleep(3)
-    
-    test = recognize_speech_from_mic(r, mic)
-    print(test)
+command = get_command()
+while command not in ["next", "finished", "print"]:
+    command = get_command("Come again?")
+while command == "next":
+    new_entry = create_entry()
+    print("Adding to collection:", new_entry)
+    input_collection.append(new_entry)
+    command = get_command()
+if command == "finished":
+    print(input_collection)
