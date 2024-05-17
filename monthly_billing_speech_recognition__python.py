@@ -1,28 +1,20 @@
 import speech_recognition as sr
-import time
 import openpyxl
 
-
-languages = ["en-EN", "de-DE"]
-input_collection = list()
-
-current_year = "2024"
 
 rec = sr.Recognizer()
 mic = sr.Microphone()
 
-wb = openpyxl.load_workbook("billing.xlsx")
 
-
-
-def create_text_from_audio(audio_file):
+def create_text_from_audio(audio_file: str) -> str:
+    """Converts audio file to text."""
     try:
         billing_audio = sr.AudioFile(audio_file)
         with billing_audio as source:
             rec.adjust_for_ambient_noise(source)
             audio = rec.record(source)
         text = rec.recognize_google(audio)
-        print("Google Speech Recognition thinks you said\n" + text)
+        print("Google Speech Recognition converted your recording to the following text\n\n" + text)
     except sr.UnknownValueError:
         print("Google Speech Recognition could not understand audio")
         text = "Unrecognized"
@@ -32,7 +24,8 @@ def create_text_from_audio(audio_file):
     return text
 
 
-def sort_entries(entry_list):
+def sort_entries(entry_list: list) -> tuple[list, list]:
+    """Checks if an entry is valid and appends it to the correct list."""
     check_again = list()
     cleared = list()
     for entry in entry_list:
@@ -44,7 +37,8 @@ def sort_entries(entry_list):
     return cleared, check_again
 
 
-def convert_month(m):
+def convert_month(m: str) -> str:
+    """Converts the word of a month into the according string of ciphers."""
     months = {"january": "01", "february": "02",  "march": "03", "april": "04", "may": "05",
               "june": "06", "july": "07", "august": "08", "september": "09", "october": "10",
               "november": "11", "december": "12"}
@@ -57,7 +51,8 @@ def convert_month(m):
         return current_month
 
 
-def convert_amount(a):
+def convert_amount(a: str) -> float | str:
+    """Converts a string to a float and returns it if successful."""
     amount = a.strip()
     try:
         amount = float(a)
@@ -67,21 +62,25 @@ def convert_amount(a):
         return amount
 
 
-def create_full_date(d, m, y):
+def create_full_date(d: str, m: str, y: str) -> str:
+    """Concatenates year, month and day to one string."""
     return y + convert_month(m) + d
 
-
+print()
 billing_data = create_text_from_audio("test3.wav")
 bd_listed = billing_data.split("next")
-
 valid_entries, invalid_entries = sort_entries(bd_listed)
+
+current_year = "2024"
 current_month = invalid_entries.pop(0).strip()
 
-print("Creating spreadsheet for:", current_month)
-print("Valid entries:", valid_entries)
-print("All set" if not invalid_entries else "Check again:" + invalid_entries)
+print("\nCreating spreadsheet for:", current_month)
+print("\nValid entries:")
+for entry in valid_entries:
+    print("\t", entry)
+print("\nNo invalid entries" if not invalid_entries else f"\nEntries to be checked manually in Excel file: {invalid_entries}")
 
-
+wb = openpyxl.load_workbook("billing.xlsx")
 ws = wb.create_sheet(current_month)
 
 ws["A1"] = "Date"
@@ -103,7 +102,5 @@ ws["B" + str(row_number)] = "Total"
 ws["C" + str(row_number)] = "=SUM(C2:C" + str(row_number-1) + ")"
 
 wb.save("billing.xlsx")
-print("Data saved to file.")
+print("\nData saved to file.")
 wb.close()
-
-
